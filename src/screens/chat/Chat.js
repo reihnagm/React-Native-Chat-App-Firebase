@@ -141,6 +141,7 @@ class Chat extends Component {
     }
 
     _renderRow = ({ item }) => {
+
         return (
             <View style={{
                 flexDirection: 'row',
@@ -166,12 +167,13 @@ class Chat extends Component {
                 </Text>
             </View>
         )
+
     }
 
     render() {
         let { height } = Dimensions.get('window')
         return (
-            <KeyboardAvoidingView behavior={height} style={{ flex: 1 }}>
+            <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
                 <Animated.View style={[
                         styles.bottomBar,
                         { bottom: this.keyboardHeight }

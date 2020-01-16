@@ -82,18 +82,53 @@ class Profile extends Component {
         }
 
         ImagePicker.showImagePicker(options, response => {
-            if(response.error) {
-                console.log(error)
-            } else if(!response.didCancel) {
-                this.setState({
-                    upload: true,
-                    imageSource: {
-                        uri: response.uri
+
+            let error  = false
+
+            if(response) {
+                const arr = [response.fileName]
+                const extension = arr[0].split('.')
+                const filename = extension[1]
+                const size = response.fileSize
+                try {
+                    if(size > 5242880) {
+                        throw new Error('File size cannot than 5 MB !')
+                        error = true
                     }
-                }, this.uploadedFile)
+                    if(!this.isImage(filename)) {
+                        throw new Error('File allowed only JPG, JPEG, PNG, GIF, SVG !')
+                        error = true
+                    }
+                    if(error === false) {
+                        if(response.error) {
+                            console.log(error)
+                        } else if(!response.didCancel) {
+                            this.setState({
+                                upload: true,
+                                imageSource: {
+                                    uri: response.uri
+                                }
+                            }, this.uploadedFile)
+                        }
+                    }
+                } catch(error) {
+                    toastr(error.message, 'danger')
+                }
             }
+
         })
 
+    }
+
+    isImage = (filename) => {
+        switch (filename) {
+            case 'jpg':
+            case 'gif':
+            case 'bmp':
+            case 'png':
+                return true
+        }
+        return false
     }
 
     updateUser = () => {
