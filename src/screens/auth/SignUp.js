@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { Component } from 'react'
 
 import {
     View,
@@ -13,29 +13,64 @@ import {
     ActivityIndicator,
 } from 'react-native'
 
-import { connect } from 'react-redux'
+import firebase from 'firebase'
 
-import { handleName, handleEmail, handlePassword, register } from '../../actions/auth'
+class SignUp extends Component {
 
-const SignUp = ({ handleName, handleEmail, handlePassword, register, user: { signUpLoading, name, email, password }, navigation  }) => {
+    constructor(props) {
+        super(props)
 
-    _signUpAsync = () => {
+        this.state = {
+            name: '',
+            email: '',
+            password: '',
+            phone: ''
+        }
+    }
 
-        const data = {
-            name,
-            email,
-            password
+    _signUpAsync = async () => {
+
+        const {name, email, password, phone} = this.state
+
+        let error = false
+
+        try {
+
+            if(name.trim() === "") {
+                error = true
+                throw new Error('Name is Required.')
+            }
+
+            if(name.length < 3) {
+                error = true
+                throw new Error('Name Minimum 3 Character.')
+            }
+
+            if(phone < 12) {
+                error = true
+                throw new Error('Phone Minimum 12 Character.')
+            }
+
+            firebase.database().ref('users').set({ name, email, password, phone })
+
+            const response = await firebase.auth().createUserWithEmailAndPassword(email, password)
+
+            await AsyncStorage.setItem('userToken', response.uid)
+
+            this.props.navigation.navigate('App')
+
+        } catch(error) {
+            toastr(error.message, 'danger')
         }
 
-        register(data, navigation)
+    }
 
+    _handleChange = key => value => {
+        this.setState({ [key]: value })
     }
 
     _renderRegisterButton = () => {
 
-        if (signUpLoading) {
-            return (<ActivityIndicator size="large" color="#00ff00" />)
-        }
         return (
             <TouchableOpacity
                 style={styles.btnRegister}
@@ -47,48 +82,56 @@ const SignUp = ({ handleName, handleEmail, handlePassword, register, user: { sig
 
     }
 
-    {/* <ImageBackground source={require('../../assets/images/ic_log_in_background.png')} style={{ flex: 1, width: null }}>
-    </ImageBackground>
-    */}
+    render() {
+        return (
 
-    return (
-
-       <View style={styles.container}>
-            <View style={styles.formGroup}>
+           <View style={styles.container}>
+                <View style={styles.formGroup}>
                 <TextInput
+                    value={this.state.name}
+                    onChangeText={this._handleChange('name')}
                     placeholder='Name'
                     placeholderTextColor='#7f99b2'
                     style={styles.textInput}
-                    value={name}
-                    onChangeText={value => handleName(value)}
+                    returnKeyType="next"
                 />
-                <TextInput
+                 <TextInput
+                    value={this.state.email}
+                    onChangeText={this._handleChange('email')}
                     placeholder='Email'
                     placeholderTextColor='#7f99b2'
                     style={styles.textInput}
-                    value={email}
-                    onChangeText={value => handleEmail(value)}
+                    returnKeyType="next"
                 />
-                <TextInput
+                  <TextInput
+                    value={this.state.password}
+                    onChangeText={this._handleChange('password')}
                     placeholder='Password'
                     placeholderTextColor='#7f99b2'
                     style={styles.textInput}
-                    value={password}
-                    onChangeText={value => handlePassword(value)}
+                    returnKeyType="go"
                 />
-
-                <View style={styles.btnSignUp}>
-                   { _renderRegisterButton() }
+                <TextInput
+                    value={this.state.phone}
+                    onChangeText={this._handleChange('phone')}
+                    placeholder='Phone Number'
+                    placeholderTextColor='#7f99b2'
+                    keyboardType='number-pad'
+                    style={styles.textInput}
+                />
+                    <View style={styles.btnSignUp}>
+                       { _renderRegisterButton() }
+                    </View>
                 </View>
+
+                <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
+                    <Text style={styles.textLogin}>Already have account ? Sign in »</Text>
+                </TouchableOpacity>
+
             </View>
 
-            <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-                <Text style={styles.textLogin}>Already have account ? Sign in »</Text>
-            </TouchableOpacity>
-
-        </View>
-
-    )
+        )
+    }
 
 }
 
@@ -129,11 +172,5 @@ const styles = StyleSheet.create({
    }
 });
 
-const mapStateToProps = state => ({
-    user: state.auth
-})
 
-export default connect(
-    mapStateToProps,
-    { handleName, handleEmail, handlePassword, register }
-)(SignUp)
+export default SignUp

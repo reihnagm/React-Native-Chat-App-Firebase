@@ -19,14 +19,16 @@ class Home extends Component {
         dbRef: firebase.database().ref('users')
     }
 
-    _fetchdata = async () => {
+    async _fetchdata () {
+
+        const { currentUser } = firebase.auth()
 
         await this.state.dbRef.on('child_added', (val) => {
             let person = val.val()
-            person.phone = val.key
-            if (person.phone === User.phone) {
-                User.name = person.name
-                User.image = person.image ? person.image : null
+            person.uid = val.key
+            if (person.uid === currentUser.uid) {
+                person.name
+                person.image ? person.image : null
             } else {
                 this.setState((prevState) => {
                     return {
@@ -35,10 +37,6 @@ class Home extends Component {
                 })
             }
         })
-
-        await new Promise(resolve => { setTimeout(resolve, 1000) })
-
-        return Promise.resolve()
 
     }
 

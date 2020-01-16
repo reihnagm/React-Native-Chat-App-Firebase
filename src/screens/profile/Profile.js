@@ -18,10 +18,41 @@ class Profile extends Component {
         }
     }
 
-    state = {
-        name: User.name,
-        imageSource: User.image ? { uri:  User.image }  : require('../../assets/profile/user.png'),
-        upload: false
+    constructor(props) {
+        super(props)
+
+        this.state = {
+            name: '',
+            email: '',
+            phone: '',
+            imageSource: User.image ? { uri:  User.image }  : require('../../assets/profile/user.png'),
+            upload: false
+        }
+    }
+
+    async _getProfile() {
+
+        const { currentUser }  = firebase.auth()
+
+        await firebase.database().ref(`users/${currentUser.uid}`).on("value", snapshot => {
+            const name = snapshot.val().name
+            const email = snapshot.val().email
+            const phone = snapshot.val().phone
+            this.setState({
+                name,
+                email,
+                phone,
+                imageSource: User.image ? { uri:  User.image } : require('../../assets/profile/user.png'),
+                upload: false
+            })
+        })
+        
+    }
+
+    componentDidMount() {
+
+        this._getProfile()
+
     }
 
     _signout = async (props) => {
@@ -85,36 +116,35 @@ class Profile extends Component {
 
             let error  = false
 
-            if(response) {
-                const arr = [response.fileName]
-                const extension = arr[0].split('.')
-                const filename = extension[1]
-                const size = response.fileSize
-                try {
-                    if(size > 5242880) {
-                        throw new Error('File size cannot than 5 MB !')
-                        error = true
-                    }
-                    if(!this.isImage(filename)) {
-                        throw new Error('File allowed only JPG, JPEG, PNG, GIF, SVG !')
-                        error = true
-                    }
-                    if(error === false) {
-                        if(response.error) {
-                            console.log(error)
-                        } else if(!response.didCancel) {
-                            this.setState({
-                                upload: true,
-                                imageSource: {
-                                    uri: response.uri
-                                }
-                            }, this.uploadedFile)
-                        }
-                    }
-                } catch(error) {
-                    toastr(error.message, 'danger')
+            const arr = [response.fileName]
+            const extension = arr[0].split('.')
+            const filename = extension[1]
+
+            try {
+                if(response.fileSize > 5242880) {
+                    throw new Error('File size cannot than 5 MB !')
+                    error = true
                 }
+                if(!this.isImage(filename)) {
+                    throw new Error('File allowed only JPG, JPEG, PNG, GIF, SVG !')
+                    error = true
+                }
+
+                if(response.error) {
+                    throw new Error(response.error)
+                } else if(!response.didCancel) {
+                    this.setState({
+                        upload: true,
+                        imageSource: {
+                            uri: response.uri
+                        }
+                    }, this.uploadedFile)
+                }
+
+            } catch(error) {
+                toastr(error.message, 'danger')
             }
+
 
         })
 
@@ -203,8 +233,9 @@ class Profile extends Component {
                     marginBottom: 10,
                     borderRadius: 5
                 }} value={this.state.name} onChangeText={this._handleChange('name')} />
-                <Text style={{ fontSize: 16 }}>{User.name}</Text>
-                <Text style={{ fontSize: 16 }}>{User.phone}</Text>
+                <Text style={{ fontSize: 16 }}>{this.state.name}</Text>
+                <Text style={{ fontSize: 16 }}>{this.state.email}</Text>
+                <Text style={{ fontSize: 16 }}>{this.state.phone}</Text>
                 <TouchableOpacity onPress={this._changeName}>
                     <Text> Change Name</Text>
                 </TouchableOpacity>

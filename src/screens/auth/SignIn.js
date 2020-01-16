@@ -15,10 +15,6 @@ import {
 
 import { toastr } from '../../helpers/helper'
 
-import { connect } from 'react-redux'
-
-import { handleEmail, handlePassword, handlePhone, changeValuePhone, login } from '../../actions/auth'
-
 import User from './User'
 
 import firebase from 'firebase'
@@ -29,50 +25,42 @@ class SignIn extends Component {
         headerShown: false
     }
 
-    state = {
-        phone: '',
-        name: ''
+    constructor(props) {
+        super(props)
+
+        this.state = {
+            name: '',
+            email: ''
+        }
     }
 
     _handleChange = key => value => {
         this.setState({ [key]: value })
     }
 
-    componentDidMount() {
-        AsyncStorage.getItem('userPhone').then(value => {
-            if(value) {
-                this.setState({
-                    phone: value
-                })
-            }
-        })
-    }
-
     _signInAsync = async () => {
 
-        if(this.state.phone.length < 12) {
-            toastr('Wrong Phone Number','danger')
-        } else if(this.state.name.length < 3) {
-            toastr('Name is Required','danger')
-        }
-        else {
-            await AsyncStorage.setItem('userPhone', this.state.phone)
-            User.phone = this.state.phone
-            firebase.database().ref(`users/${User.phone}`).set({ name: this.state.name })
-            this.props.navigation.navigate('App')
+        const { name, email, password, phone } = this.state
+
+        const { navigation } = this.props
+
+        try {
+
+            const response = await firebase.auth().signInWithEmailAndPassword(email, password)
+
+            await AsyncStorage.setItem('userToken',response.user.uid)
+
+            navigation.navigate('App')
+
+        } catch(error) {
+
+            toastr(error.message, 'danger')
+
         }
 
     }
 
     _renderAccessButton = () => {
-
-        if (this.props.signInLoading) {
-
-            return (
-                <ActivityIndicator size="large" color="#5c748b" />
-            )
-
-        }
 
         return (
             <TouchableOpacity
@@ -85,44 +73,27 @@ class SignIn extends Component {
 
     }
 
-
     render() {
         return (
              <View style={styles.container}>
 
                 <View style={styles.formGroup}>
-                    <TextInput
-                        value={this.state.phone}
-                        onChangeText={this._handleChange('phone')}
-                        placeholder='Phone Number'
-                        placeholderTextColor='#7f99b2'
-                        keyboardType='number-pad'
-                        style={styles.textInput}
-                    />
-                    <TextInput
-                        value={this.state.name}
-                        onChangeText={this._handleChange('name')}
-                        placeholder='Name'
-                        placeholderTextColor='#7f99b2'
-                        style={styles.textInput}
-                        returnKeyType="next"
-                    />
-                    {/* <TextInput
-                        value={this.props.email}
-                        onChangeText={value => this.props.handleEmail(value)}
+                     <TextInput
+                        value={this.state.email}
+                        onChangeText={this._handleChange('email')}
                         placeholder='Email'
                         placeholderTextColor='#7f99b2'
                         style={styles.textInput}
                         returnKeyType="next"
-                    /> */}
-                    {/*  <TextInput
-                        value={this.props.password}
-                        onChangeText={value => this.props.handlePassword(value)}
+                    />
+                      <TextInput
+                        value={this.state.password}
+                        onChangeText={this._handleChange('password')}
                         placeholder='Password'
                         placeholderTextColor='#7f99b2'
                         style={styles.textInput}
                         returnKeyType="go"
-                    /> */}
+                    />
                     <View style={styles.btnLogIn}>
                         { this._renderAccessButton() }
                     </View>
@@ -186,7 +157,4 @@ const mapStateToProps = state => ({
     phone: state.auth.phone
 })
 
-export default connect(
-    mapStateToProps,
-    { handleEmail, handlePassword, handlePhone, changeValuePhone, login }
-)(SignIn)
+export default SignIn

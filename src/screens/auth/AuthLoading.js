@@ -13,7 +13,7 @@ import User from './User'
 const AuthLoading = ({ navigation }) => {
 
     const _bootstrapAsync = async () => {
-        User.phone = await AsyncStorage.getItem('userPhone')
+        User.phone = await AsyncStorage.getItem('userToken')
         navigation.navigate(User.phone ? 'App' : 'Auth')
     }
 
