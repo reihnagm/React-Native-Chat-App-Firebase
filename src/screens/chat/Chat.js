@@ -18,8 +18,6 @@ import {
 
 import firebase from 'firebase'
 
-import User from '../auth/User'
-
 const isIOS = Platform.OS === 'ios'
 
 class Chat extends Component {
@@ -36,8 +34,7 @@ class Chat extends Component {
 
         this.state = {
             person: {
-                name: props.navigation.getParam('name'),
-                phone: props.navigation.getParam('phone')
+                uid: props.navigation.getParam('uid')
             },
             textMessage: '',
             messageList: [],
@@ -51,7 +48,9 @@ class Chat extends Component {
 
     _fetchdata = async () => {
 
-        await this.state.dbRef.child(User.phone).child(this.state.person.phone)
+        const { currentUser } = firebase.auth()
+
+        await this.state.dbRef.child(currentUser.uid).child(this.state.person.uid)
             .on('child_added', (value) => {
                 this.setState((prevState) => {
                     return {
@@ -59,11 +58,6 @@ class Chat extends Component {
                     }
                 })
             })
-
-        await new Promise(resolve => { setTimeout(resolve, 1000) })
-
-        return Promise.resolve()
-
     }
 
     componentDidMount() {
@@ -88,8 +82,6 @@ class Chat extends Component {
     }
 
     keyboardEvent = (event, isShow) => {
-
-        console.log('masuk event')
 
         let HeightOS = isIOS ? 60 : 0
         let bottomOS = isIOS ? 120 : 60
@@ -124,16 +116,18 @@ class Chat extends Component {
 
     _sendMessage = async () => {
 
+        const { currentUser } = firebase.auth()
+
         if(this.state.textMessage.trim().length > 0) {
-            let msgId = this.state.dbRef.child(User.phone).child(this.state.person.phone).push().key
+            let msgId = this.state.dbRef.child(currentUser.uid).child(this.state.person.uid).push().key
             let updates = {}
             let message = {
                 message: this.state.textMessage,
                 time: firebase.database.ServerValue.TIMESTAMP,
-                from: User.phone
+                from: currentUser.uid
             }
-            updates[`${User.phone}/${this.state.person.phone}/${msgId}`] = message
-            updates[`${this.state.person.phone}/${User.phone}/${msgId}`] = message
+            updates[`${currentUser.uid}/${this.state.person.uid}/${msgId}`] = message
+            updates[`${this.state.person.uid}/${currentUser.uid}/${msgId}`] = message
             this.state.dbRef.update(updates)
             this.setState({ textMessage: '' })
         }
@@ -142,12 +136,14 @@ class Chat extends Component {
 
     _renderRow = ({ item }) => {
 
+        const { currentUser } = firebase.auth()
+
         return (
             <View style={{
                 flexDirection: 'row',
                 maxWidth: '60%',
-                alignSelf: item.from === User.phone ? 'flex-end' : 'flex-start',
-                backgroundColor: item.from === User.phone ? '#adb9c5' : '#eaedf0',
+                alignSelf: item.from === currentUser.uid ? 'flex-end' : 'flex-start',
+                backgroundColor: item.from === currentUser.uid ? '#adb9c5' : '#eaedf0',
                 borderRadius: 5,
                 marginBottom: 10
             }}>

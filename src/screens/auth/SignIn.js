@@ -40,13 +40,17 @@ class SignIn extends Component {
 
     _signInAsync = async () => {
 
-        const { name, email, password, phone } = this.state
+        const { email, password } = this.state
 
         const { navigation } = this.props
 
         try {
 
             const response = await firebase.auth().signInWithEmailAndPassword(email, password)
+
+            firebase.database().ref('users').child(response.user.uid).update({
+                uid: response.user.uid 
+            })
 
             await AsyncStorage.setItem('userToken',response.user.uid)
 

@@ -1,8 +1,6 @@
 import React, { Component } from 'react'
 
-import { SafeAreaView, Image, Text, View, Button, FlatList, TouchableOpacity } from 'react-native'
-
-import User from '../auth/User'
+import { SafeAreaView, Image, Text, View, Button, FlatList, AsyncStorage, TouchableOpacity } from 'react-native'
 
 import firebase from 'firebase'
 
@@ -21,13 +19,13 @@ class Home extends Component {
 
     async _fetchdata () {
 
-        const { currentUser } = firebase.auth()
+        const currentUserUID = await AsyncStorage.getItem('userToken')
 
         await this.state.dbRef.on('child_added', (val) => {
             let person = val.val()
             person.uid = val.key
-            if (person.uid === currentUser.uid) {
-                person.name
+            if (person.uid === currentUserUID) {
+                person.email
                 person.image ? person.image : null
             } else {
                 this.setState((prevState) => {
@@ -71,21 +69,22 @@ class Home extends Component {
                         marginRight: 5
                     }}
                     source={ item.image ? { uri: item.image } : require('../../assets/profile/user.png') } />
-                <Text style={{ fontSize: 16 }}>{ item.name }</Text>
+                <Text style={{ fontSize: 16 }}>{ item.uid }</Text>
             </TouchableOpacity>
         )
     }
 
     render() {
         return (
-            <SafeAreaView>
+            <SafeAreaView style={{ backgroundColor: '#d6dce2', flex: 1 }}>
                 <FlatList
                     data={ this.state.users }
                     renderItem={ this.renderRow }
-                    keyExtractor={ (item) => item.phone }
+                    keyExtractor={ (item) => item.uid }
                     ListHeaderComponent={ () =>
                         <Text style={{
                             fontSize: 20,
+                            color: '#24394d',
                             fontWeight: 'bold',
                             marginVertical: 10,
                             marginLeft: 10

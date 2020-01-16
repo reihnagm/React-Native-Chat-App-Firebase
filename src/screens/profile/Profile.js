@@ -24,8 +24,9 @@ class Profile extends Component {
         this.state = {
             name: '',
             email: '',
+            bio: '',
             phone: '',
-            imageSource: User.image ? { uri:  User.image }  : require('../../assets/profile/user.png'),
+            imageSource: require('../../assets/profile/user.png'),
             upload: false
         }
     }
@@ -34,19 +35,23 @@ class Profile extends Component {
 
         const { currentUser }  = firebase.auth()
 
+        const { navigation } = this.props
+
         await firebase.database().ref(`users/${currentUser.uid}`).on("value", snapshot => {
+            const image = snapshot.val().imageSource
             const name = snapshot.val().name
             const email = snapshot.val().email
+            const bio = snapshot.val().bio
             const phone = snapshot.val().phone
             this.setState({
-                name,
-                email,
-                phone,
-                imageSource: User.image ? { uri:  User.image } : require('../../assets/profile/user.png'),
-                upload: false
+                imageSource: image ? { uri: image } : require('../../assets/profile/user.png'),
+                name: name ? name : '',
+                email: email ? email : '',
+                bio: bio ? bio : '',
+                phone: phone ? phone : '',
             })
         })
-        
+
     }
 
     componentDidMount() {
@@ -67,7 +72,7 @@ class Profile extends Component {
         this.setState({ [key]: value })
     }
 
-    _changeName = async () => {
+    _saveProfile = async () => {
 
         let error = false
 
@@ -84,9 +89,9 @@ class Profile extends Component {
             }
 
             if(error === false) {
-                if(User.name !== this.state.name) {
-                    this.updateUser()
-                }
+
+                this.updateUser()
+
             }
 
         } catch(error) {
@@ -161,15 +166,22 @@ class Profile extends Component {
         return false
     }
 
-    updateUser = () => {
-        firebase.database().ref('users').child(User.phone).set(User)
+    updateUser = (imageUrl) => {
+        const { imageSource, name, bio, phone } = this.state
+        const { currentUser } = firebase.auth()
+
+        firebase.database().ref(`users/${currentUser.uid}`).update({
+            imageSource: imageSource ? imageUrl : '',
+            name: name ? name : '',
+            bio: bio ? bio : '',
+            phone: phone ? phone : ''
+        })
+
         toastr('Successfully updated !', 'success')
     }
 
     updateUserImage = (imageUrl) => {
-        User.image = imageUrl
-        User.name = this.state.name
-        this.updateUser()
+        this.updateUser(imageUrl)
         this.setState({
             upload: false,
             imageSource: {
@@ -179,8 +191,9 @@ class Profile extends Component {
     }
 
     uploadedFile = async () => {
+        const { currentUser } = firebase.auth()
         const file = await this.uriToBlob(this.state.imageSource.uri)
-        firebase.storage().ref(`profile_picture/${User.phone}.png`)
+        firebase.storage().ref(`profile_picture/${currentUser.uid}.png`)
             .put(file)
             .then(snapshot => snapshot.ref.getDownloadURL())
             .then(url =>  this.updateUserImage(url))
@@ -210,6 +223,7 @@ class Profile extends Component {
     render() {
         return (
             <SafeAreaView style={{
+                backgroundColor: '#d6dce2',
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center'
@@ -226,21 +240,66 @@ class Profile extends Component {
                     }
                 </TouchableOpacity>
                 <TextInput style={{
-                    padding: 10,
+                    padding: 8,
                     borderWidth: 1,
-                    borderColor: '#ccc',
+                    borderColor: '#34526e',
+                    color: '#24394d',
                     width: '80%',
                     marginBottom: 10,
                     borderRadius: 5
-                }} value={this.state.name} onChangeText={this._handleChange('name')} />
-                <Text style={{ fontSize: 16 }}>{this.state.name}</Text>
-                <Text style={{ fontSize: 16 }}>{this.state.email}</Text>
-                <Text style={{ fontSize: 16 }}>{this.state.phone}</Text>
-                <TouchableOpacity onPress={this._changeName}>
-                    <Text> Change Name</Text>
+                }} placeholder='Name' placeholderTextColor='#24394d' value={this.state.name} onChangeText={this._handleChange('name')} />
+                <TextInput style={{
+                    padding: 8,
+                    borderWidth: 1,
+                    borderColor: '#34526e',
+                    color: '#24394d',
+                    width: '80%',
+                    marginBottom: 10,
+                    borderRadius: 5
+                }} placeholder='Email' placeholderTextColor='#24394d' editable={false} value={this.state.email} onChangeText={this._handleChange('email')} />
+                <TextInput style={{
+                    padding: 8,
+                    borderWidth: 1,
+                    borderColor: '#34526e',
+                    color: '#24394d',
+                    width: '80%',
+                    marginBottom: 10,
+                    borderRadius: 5
+                }} placeholderTextColor='#24394d' placeholder= 'Bio' value={this.state.bio} onChangeText={this._handleChange('bio')} />
+                <TextInput style={{
+                    padding: 8,
+                    borderWidth: 1,
+                    borderColor: '#34526e',
+                    color: '#24394d',
+                    width: '80%',
+                    marginBottom: 10,
+                    borderRadius: 5
+                }} placeholderTextColor='#24394d' placeholder= 'Phone' value={this.state.phone} onChangeText={this._handleChange('phone')} />
+                <TouchableOpacity
+                    onPress={this._saveProfile}
+                    style={{
+                        padding: 8,
+                        backgroundColor: '#294158',
+                        marginTop: 12,
+                        borderRadius: 7
+                    }}>
+                    <Text style={{
+                        color:'#d6dce2'
+                    }}> Save </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={this._signout}>
-                    <Text> Logout </Text>
+                <TouchableOpacity
+                    onPress={this._signout}
+                    style={{
+                        padding: 8,
+                        marginTop: 14,
+                        backgroundColor: '#ff5065',
+                        borderRadius: 7
+                    }}>
+                    <Text style={{
+                        color: '#d6dce2'
+                    }}>
+                        Logout
+                    </Text>
                 </TouchableOpacity>
             </SafeAreaView>
         )
