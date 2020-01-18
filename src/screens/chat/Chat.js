@@ -5,6 +5,7 @@ import {
     View,
     Dimensions,
     Text,
+    AsyncStorage,
     Image,
     Animated,
     Keyboard,
@@ -16,17 +17,15 @@ import {
     StyleSheet,
 } from 'react-native'
 
+import { Header } from 'react-navigation-stack'
+
 import firebase from 'firebase'
 
 const isIOS = Platform.OS === 'ios'
 
 class Chat extends Component {
 
-    static navigationOptions = ({ navigation }) => {
-        return {
-            title: navigation.getParam('name', null)
-        }
-    }
+    _isMounted = false
 
     constructor(props) {
 
@@ -34,30 +33,40 @@ class Chat extends Component {
 
         this.state = {
             person: {
-                uid: props.navigation.getParam('uid')
+                uid: props.navigation.getParam('uid'),
+                name: props.navigation.getParam('name'),
+                email: props.navigation.getParam('email'),
+                image: props.navigation.getParam('image')
             },
             textMessage: '',
-            messageList: [],
-            dbRef: firebase.database().ref('messages')
+            messageList: []
         }
 
         this.keyboardHeight = new Animated.Value(0)
-        this.bottomPadding = new Animated.Value(60)
+        this.bottomPadding = new Animated.Value(80)
 
     }
 
-    _fetchdata = async () => {
+    static navigationOptions = ({ navigate }) => {
+        headerTitle: () => <Text> test </Text>
+    }
 
-        const { currentUser } = firebase.auth()
+    async _fetchdata () {
 
-        await this.state.dbRef.child(currentUser.uid).child(this.state.person.uid)
-            .on('child_added', (value) => {
-                this.setState((prevState) => {
-                    return {
-                        messageList: [...prevState.messageList, value.val()]
-                    }
-                })
+        this._isMounted = true
+
+        const uid = await AsyncStorage.getItem('userToken')
+
+        await firebase.database().ref('messages').child(uid).child(this.state.person.uid).on('child_added', (value) => {
+                if (this._isMounted) {
+                    this.setState(prevState => {
+                        return {
+                            messageList: prevState.messageList.concat(value.val())
+                        }
+                    })
+                }
             })
+
     }
 
     componentDidMount() {
@@ -70,14 +79,11 @@ class Chat extends Component {
 
         this._fetchdata()
 
-
     }
 
     componentWillUnmount() {
 
-        this.state.dbRef.off()
-        // this.keyboardShowListener.remove()
-        // this.keyboardHideListener.remove()
+        this._isMounted = false
 
     }
 
@@ -100,10 +106,13 @@ class Chat extends Component {
     }
 
     _handleMessage = key => value => {
+
         this.setState({ [key]: value })
+
     }
 
     _convertTime = (time) => {
+
         let d = new Date(time)
         let c = new Date()
         let result = (d.getHours < 10 ? '0' : '') + d.getHours() + ':'
@@ -112,23 +121,39 @@ class Chat extends Component {
             result = d.getDay() + ' ' + d.getMonth() + ' ' + result
         }
         return result
+
     }
 
     _sendMessage = async () => {
 
-        const { currentUser } = firebase.auth()
+        const uid = await AsyncStorage.getItem('userToken')
 
         if(this.state.textMessage.trim().length > 0) {
-            let msgId = this.state.dbRef.child(currentUser.uid).child(this.state.person.uid).push().key
+            let msgId = firebase.database().ref('messages').child(uid).child(this.state.person.uid).push().key
             let updates = {}
             let message = {
                 message: this.state.textMessage,
                 time: firebase.database.ServerValue.TIMESTAMP,
-                from: currentUser.uid
+                from: this.state.person.uid
             }
-            updates[`${currentUser.uid}/${this.state.person.uid}/${msgId}`] = message
-            updates[`${this.state.person.uid}/${currentUser.uid}/${msgId}`] = message
-            this.state.dbRef.update(updates)
+            updates[`${uid}/${this.state.person.uid}/${msgId}`] = message
+            updates[`${this.state.person.uid}/${uid}/${msgId}`] = message
+            firebase.database().ref('messages').update(updates)
+
+            let msgId2 = firebase.database().ref('user_conversations').child(this.state.person.uid).push().key
+            let updates2 = {}
+            let message2 = {
+                name: this.state.person.name,
+                email: this.state.person.email,
+                uid: this.state.person.uid,
+                lastMessage: this.state.textMessage
+            }
+
+
+            updates2[`${uid}/${this.state.person.uid}/${msgId}`] = message2
+            updates2[`${this.state.person.uid}/${uid}/${msgId}`] = message2
+            firebase.database().ref('user_conversations').update(updates2)
+
             this.setState({ textMessage: '' })
         }
 
@@ -156,8 +181,9 @@ class Chat extends Component {
                 </Text>
                 <Text style={{
                     color: '#2e4963',
-                    padding: 3,
-                    fontSize: 12
+                    marginTop: 3,
+                    marginRight: 5,
+                    fontSize: 11
                 }}>
                     { this._convertTime(item.time) }
                 </Text>
@@ -167,59 +193,65 @@ class Chat extends Component {
     }
 
     render() {
+
         let { height } = Dimensions.get('window')
+
         return (
-            <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-                <Animated.View style={[
-                        styles.bottomBar,
-                        { bottom: this.keyboardHeight }
-                    ]}>
-                    <TextInput
-                        style={{
-                            padding: 10,
-                            borderWidth: 1,
-                            borderColor: '#5c748b',
-                            color: '#2e4963',
-                            width: '80%',
-                            marginBottom: 10,
-                            borderRadius: 5,
-                        }}
-                        placeholderTextColor='#2e4963'
-                        value={this.state.textMessage}
-                        placeholder="Message"
-                        onChangeText={this._handleMessage('textMessage')}
-                    />
-                    <TouchableOpacity style={{
-                            paddingBottom: 10,
-                            marginLeft: 10,
-                            height: 40,
-                            width: 40,
-                            paddingTop: 10,
-                            paddingLeft: 5,
-                            borderRadius: 20,
-                            alignItems: 'center'
-                        }} onPress={() => this._sendMessage()}>
-                        <Image source={ require('../../assets/send/send.png') } style={{
-                            resizeMode: 'contain',
-                            height: 20,
-                            tintColor: '#5c748b'
-                        }}
+            <>
+                <KeyboardAvoidingView keyboardVerticalOffset = {Header.useHeaderHight + 5} behavior="height" style={{ flex: 1 }}>
+                    <Animated.View style={[
+                            styles.bottomBar,
+                            { bottom: this.keyboardHeight }
+                        ]}>
+                        <TextInput
+                            style={{
+                                padding: 10,
+                                borderWidth: 1,
+                                borderColor: '#5c748b',
+                                color: '#2e4963',
+                                width: '80%',
+                                marginBottom: 10,
+                                borderRadius: 5,
+                            }}
+                            placeholderTextColor='#2e4963'
+                            value={this.state.textMessage}
+                            placeholder="Message"
+                            onChangeText={this._handleMessage('textMessage')}
                         />
-                    </TouchableOpacity>
-                </Animated.View>
-                <ImageBackground source={require('../../assets/images/ic_chat_background.png')} style={{ flex: 1, width: null }}>
-                    <FlatList
-                        ref={ref => this.FlatList = ref}
-                        onContentSizeChange={() => this.FlatList.scrollToEnd({ animated: true })}
-                        onLayout={() => this.FlatList.scrollToEnd({ animated: true })}
-                        style={{ padding: 10, height: height * 0.8 }}
-                        data={ this.state.messageList }
-                        renderItem={ this._renderRow }
-                        keyExtractor={ (item, index) => index.toString() }
-                        ListFooterComponent={ <Animated.View style={{ height: this.bottomPadding }} /> }
-                    />
-                </ImageBackground>
-            </KeyboardAvoidingView>
+                        <TouchableOpacity style={{
+                                height: 40,
+                                width: 40,
+                                paddingTop: 10,
+                                paddingBottom: 10,
+                                paddingLeft: 10,
+                                paddingRight: 10,
+                                marginLeft: 12,
+                                marginBottom: 8,
+                                borderRadius: 20,
+                                alignItems: 'center'
+                            }} onPress={() => this._sendMessage()}>
+                            <Image source={ require('../../assets/send/send.png') } style={{
+                                resizeMode: 'contain',
+                                height: 20,
+                                tintColor: '#5c748b'
+                            }}
+                            />
+                        </TouchableOpacity>
+                    </Animated.View>
+                    <ImageBackground source={require('../../assets/images/ic_chat_background.png')} style={{ flex: 1, width: null }}>
+                        <FlatList
+                            ref={ref => this.FlatList = ref}
+                            onContentSizeChange={() => this.FlatList.scrollToEnd({ animated: true })}
+                            onLayout={() => this.FlatList.scrollToEnd({ animated: true })}
+                            style={{ padding: 10, height: height * 0.8 }}
+                            data={ this.state.messageList }
+                            renderItem={ this._renderRow }
+                            keyExtractor={ (item, index) => index.toString() }
+                            ListFooterComponent={ <Animated.View style={{ height: this.bottomPadding }} /> }
+                        />
+                    </ImageBackground>
+                </KeyboardAvoidingView>
+            </>
         )
     }
 }
@@ -227,7 +259,7 @@ class Chat extends Component {
 
 const styles = StyleSheet.create({
     bottomBar: {
-        backgroundColor: '#c2cbd3',
+        backgroundColor: '#d6dce2',
         flexDirection: 'row',
         alignItems: 'center',
         position: 'absolute',

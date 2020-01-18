@@ -4,38 +4,51 @@ import { SafeAreaView, Image, Text, View, Button, FlatList, AsyncStorage, Toucha
 
 import firebase from 'firebase'
 
+import { NavigationEvents } from 'react-navigation'
+
 class Home extends Component {
 
+    _isMounted = false
+
+    constructor(props) {
+
+        super(props)
+
+        this.state = {
+            users: [],
+        }
+
+    }
+
     static navigationOptions = () => {
+
         return {
             headerShown: false
         }
-    }
 
-    state = {
-        users: [],
-        dbRef: firebase.database().ref('users')
     }
 
     async _fetchdata () {
 
-        const currentUserUID = await AsyncStorage.getItem('userToken')
+        this._isMounted = true
 
-        await this.state.dbRef.on('child_added', (val) => {
-            let person = val.val()
-            person.uid = val.key
-            if (person.uid === currentUserUID) {
-                person.email
-                person.image ? person.image : null
-            } else {
-                this.setState((prevState) => {
-                    return {
-                        users: [...prevState.users, person]
+        const uid = await AsyncStorage.getItem('userToken')
+
+        await firebase.database().ref('users').on('child_added', async (snapshot1) => {
+            await firebase.database().ref(`user_conversations`).child(uid).child(`${snapshot1.val().uid}`).once('child_added', async (snapshot2) => {
+
+                if (snapshot2.key !== uid) {
+                    if (this._isMounted) {
+                        this.setState(prevState => {
+                            return {
+                                users: prevState.users.concat(snapshot2.val())
+                            }
+                        })
                     }
-                })
-            }
-        })
+                }
 
+            })
+        })
     }
 
     componentDidMount() {
@@ -46,52 +59,71 @@ class Home extends Component {
 
     componentWillUnmount() {
 
-        this.state.dbRef.off()
+        this._isMounted = false
 
     }
 
     renderRow = ({ item }) => {
+
         return (
-            <TouchableOpacity
-                onPress={() => this.props.navigation.navigate('Chat', item)}
-                style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    padding: 10,
-                    borderBottomColor: '#ccc',
-                    borderBottomWidth: 1 }}>
-                <Image
+            <>
+                <TouchableOpacity
+                    onPress={() => this.props.navigation.navigate('Chat', item)}
                     style={{
-                        width: 32,
-                        height: 32,
-                        resizeMode: 'cover',
-                        borderRadius: 32,
-                        marginRight: 5
-                    }}
-                    source={ item.image ? { uri: item.image } : require('../../assets/profile/user.png') } />
-                <Text style={{ fontSize: 16 }}>{ item.uid }</Text>
-            </TouchableOpacity>
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 10,
+                        borderBottomColor: '#99a8b6',
+                        borderBottomWidth: 0.8 }}>
+                    <Image
+                        style={{
+                            width: 36,
+                            height: 36,
+                            resizeMode: 'cover',
+                            borderRadius: 32,
+                            marginRight: 14
+                        }}
+                        source={ item.image ? { uri: item.image } : require('../../assets/profile/user.png') } />
+                    <View>
+                        <Text style={{
+                            fontSize: 16,
+                            color: '#1f3142',
+                            fontWeight: 'bold',
+                        }}>{ item.name } - { item.lastMessage } </Text>
+                    </View>
+                </TouchableOpacity>
+            </>
         )
+
     }
 
     render() {
         return (
-            <SafeAreaView style={{ backgroundColor: '#d6dce2', flex: 1 }}>
-                <FlatList
-                    data={ this.state.users }
-                    renderItem={ this.renderRow }
-                    keyExtractor={ (item) => item.uid }
-                    ListHeaderComponent={ () =>
-                        <Text style={{
-                            fontSize: 20,
-                            color: '#24394d',
-                            fontWeight: 'bold',
-                            marginVertical: 10,
-                            marginLeft: 10
-                        }}> Chats </Text>
-                    }
-                />
-            </SafeAreaView>
+            <>
+                <NavigationEvents onDidFocus={ () => console.log('test') } />
+                <SafeAreaView style={{ backgroundColor: '#d6dce2', flex: 1 }}>
+
+                    <FlatList
+                        data={ this.state.users }
+                        renderItem={ this.renderRow }
+                        keyExtractor={ (item) => item.uid }
+                        ListHeaderComponent={ () =>
+                            <View style={{
+                                backgroundColor: '#34526e',
+                                padding: 10,
+                                alignItems: 'center'
+                            }}>
+                                <Text style={{
+                                    fontSize: 20,
+                                    color: '#eaedf0',
+                                    fontWeight: 'bold',
+                                }}> Chats </Text>
+                            </View>
+                        }
+                    />
+
+                </SafeAreaView>
+            </>
         )
     }
 

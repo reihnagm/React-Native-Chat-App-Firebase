@@ -12,7 +12,9 @@ import SignUpScreen from './screens/auth/SignUp'
 
 import HomeScreen from './screens/home/Home'
 import ChatScreen from './screens/chat/Chat'
+import MapScreen from './screens/map/Map'
 import ProfileScreen from './screens/profile/Profile'
+import ContactScreen from './screens/contact/Contact'
 
 import { enableScreens } from 'react-native-screens'
 
@@ -38,22 +40,41 @@ const AuthStack = createStackNavigator({
 
 const TabNavigator = createBottomTabNavigator({
     Chats: AppStack,
+    Map: MapScreen,
+    Contact: ContactScreen,
     Profile: ProfileScreen
 }, {
     defaultNavigationOptions: ({ navigation }) => ({
         tabBarIcon: ({ focused, horizontal, tintColor }) => {
             const { routeName } = navigation.state
             let imageName = require('./assets/chat/chat.png')
+
             if(routeName === 'Profile') {
                 imageName = require('./assets/settings/settings.png')
+            }
+
+            if(routeName === 'Map') {
+                imageName = require('./assets/map/map.png')
+            }
+
+            if(routeName === 'Contact') {
+                imageName = require('./assets/contact/contact.png')
             }
 
             return <Image source={imageName} style={{ width: 25, resizeMode: 'contain', tintColor }} />
         },
     }),
     tabBarOptions: {
-        activeTintColor: 'tomato',
-        inActiveColor: 'gray'
+        activeTintColor: '#eaedf0',
+        inActiveColor: '#c2cbd3',
+        style: {
+            borderTopColor: 'transparent',
+            backgroundColor: '#34526e',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            height: 60,
+            position:'absolute'
+        }
     },
 })
 

@@ -12,11 +12,21 @@ import { store, persistor } from './store'
 
 import { PersistGate } from 'redux-persist/es/integration/react'
 
+import { config } from './configs/firebase'
+
+import firebase from 'firebase'
+
 import 'react-native-gesture-handler'
 
 import Route from './Routes'
 
-export default function App() {
+const App = () => {
+
+    useEffect(() => {
+        if(!firebase.apps.length) {
+            firebase.initializeApp(config)
+        }
+    }, [])
 
     return (
         <>
@@ -31,3 +41,5 @@ export default function App() {
     )
 
 }
+
+export default App

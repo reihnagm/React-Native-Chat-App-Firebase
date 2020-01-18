@@ -13,9 +13,15 @@ import {
     ActivityIndicator,
 } from 'react-native'
 
+import { toastr } from '../../helpers/helper'
+
 import firebase from 'firebase'
 
 class SignUp extends Component {
+
+    static navigationOptions = {
+        headerShown: false
+    }
 
     constructor(props) {
         super(props)
@@ -23,14 +29,13 @@ class SignUp extends Component {
         this.state = {
             name: '',
             email: '',
-            password: '',
-            phone: ''
+            password: ''
         }
     }
 
     _signUpAsync = async () => {
 
-        const {name, email, password, phone} = this.state
+        const { name, email, password } = this.state
 
         let error = false
 
@@ -41,26 +46,27 @@ class SignUp extends Component {
                 throw new Error('Name is Required.')
             }
 
-            if(name.length < 3) {
+            if(name.trim().length < 3) {
                 error = true
                 throw new Error('Name Minimum 3 Character.')
             }
 
-            if(phone < 12) {
-                error = true
-                throw new Error('Phone Minimum 12 Character.')
-            }
-
-            firebase.database().ref('users').set({ name, email, password, phone })
-
             const response = await firebase.auth().createUserWithEmailAndPassword(email, password)
 
-            await AsyncStorage.setItem('userToken', response.uid)
+            firebase.database().ref('users').child(response.user.uid).set({
+                name,
+                email,
+                uid: response.user.uid
+            })
+
+            await AsyncStorage.setItem('userToken', response.user.uid)
 
             this.props.navigation.navigate('App')
 
         } catch(error) {
+
             toastr(error.message, 'danger')
+
         }
 
     }
@@ -74,7 +80,7 @@ class SignUp extends Component {
         return (
             <TouchableOpacity
                 style={styles.btnRegister}
-                onPress={() => _signUpAsync()}
+                onPress={() => this._signUpAsync()}
                 underlayColor='#325b84'>
                 <Text style={styles.registerText}> Sign Up </Text>
             </TouchableOpacity>
@@ -87,46 +93,40 @@ class SignUp extends Component {
 
            <View style={styles.container}>
                 <View style={styles.formGroup}>
-                <TextInput
-                    value={this.state.name}
-                    onChangeText={this._handleChange('name')}
-                    placeholder='Name'
-                    placeholderTextColor='#7f99b2'
-                    style={styles.textInput}
-                    returnKeyType="next"
-                />
-                 <TextInput
-                    value={this.state.email}
-                    onChangeText={this._handleChange('email')}
-                    placeholder='Email'
-                    placeholderTextColor='#7f99b2'
-                    style={styles.textInput}
-                    returnKeyType="next"
-                />
-                  <TextInput
-                    value={this.state.password}
-                    onChangeText={this._handleChange('password')}
-                    placeholder='Password'
-                    placeholderTextColor='#7f99b2'
-                    style={styles.textInput}
-                    returnKeyType="go"
-                />
-                <TextInput
-                    value={this.state.phone}
-                    onChangeText={this._handleChange('phone')}
-                    placeholder='Phone Number'
-                    placeholderTextColor='#7f99b2'
-                    keyboardType='number-pad'
-                    style={styles.textInput}
-                />
+                    <TextInput
+                        value={this.state.name}
+                        onChangeText={this._handleChange('name')}
+                        placeholder='Name'
+                        placeholderTextColor='#294158'
+                        style={styles.textInput}
+                    />
+                     <TextInput
+                        value={this.state.email}
+                        onChangeText={this._handleChange('email')}
+                        placeholder='Email'
+                        placeholderTextColor='#294158'
+                        style={styles.textInput}
+                    />
+                      <TextInput
+                        value={this.state.password}
+                        onChangeText={this._handleChange('password')}
+                        placeholder='Password'
+                        placeholderTextColor='#294158'
+                        style={styles.textInput}
+                    />
+
                     <View style={styles.btnSignUp}>
-                       { _renderRegisterButton() }
+                       { this._renderRegisterButton() }
                     </View>
+
+                    <TouchableOpacity style={{
+                        marginTop: 14
+                    }} onPress={() => this.props.navigation.navigate('SignIn')}>
+                        <Text style={styles.textLogin}>Already have account ? Sign In »</Text>
+                    </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-                    <Text style={styles.textLogin}>Already have account ? Sign in »</Text>
-                </TouchableOpacity>
+
 
             </View>
 
@@ -138,6 +138,7 @@ class SignUp extends Component {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#d6dce2',
         padding: 10,
     },
     formGroup: {
@@ -145,31 +146,31 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     textInput: {
-        backgroundColor: '#e5eaef',
+        backgroundColor: '#eaedf0',
         borderRadius: 7,
         paddingHorizontal: 16,
         marginVertical: 10,
         fontSize: 16,
-        color: '#7f99b2'
+        color: '#294158'
+    },
+    btnRegister: {
+        marginTop: 12,
+        paddingTop: 12,
+        paddingBottom: 12,
+        backgroundColor: '#24394d',
+        borderRadius: 7,
+        borderWidth: 1,
+        borderColor: '#24394d'
     },
     textLogin: {
         fontSize: 16,
         textAlign: 'center',
         color: '#A0A0A0'
     },
-    btnRegister: {
-        marginTop: 12,
-        paddingTop: 12,
-        paddingBottom: 12,
-        backgroundColor: '#194775',
-        borderRadius: 7,
-        borderWidth: 1,
-        borderColor: '#194775'
-    },
-   registerText: {
+    registerText: {
        color:'#fff',
        textAlign:'center',
-   }
+    }
 });
 
 

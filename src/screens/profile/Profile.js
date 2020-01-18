@@ -1,8 +1,21 @@
 import React, { Component } from 'react'
 
-import { SafeAreaView, Text, AsyncStorage, Image, View, Button, TextInput, ActivityIndicator, TouchableOpacity } from 'react-native'
+import {
+    SafeAreaView,
+    ScrollView,
+    Text,
+    AsyncStorage,
+    Image,
+    View,
+    Button,
+    TextInput,
+    ActivityIndicator,
+    StyleSheet,
+    TouchableOpacity } from 'react-native'
 
 import ImagePicker from 'react-native-image-picker'
+
+import { Header } from 'react-navigation'
 
 import User from '../auth/User'
 
@@ -12,44 +25,38 @@ import firebase from 'firebase'
 
 class Profile extends Component {
 
-    static navigationOptions = {
-        headerTitle: () => {
-            <Text> Profile </Text>
-        }
-    }
-
     constructor(props) {
+
         super(props)
 
         this.state = {
             name: '',
-            email: '',
+            status: '',
             bio: '',
-            phone: '',
             imageSource: require('../../assets/profile/user.png'),
             upload: false
         }
+
     }
 
     async _getProfile() {
 
-        const { currentUser }  = firebase.auth()
+        const uid = await AsyncStorage.getItem('userToken')
 
         const { navigation } = this.props
 
-        await firebase.database().ref(`users/${currentUser.uid}`).on("value", snapshot => {
-            const image = snapshot.val().imageSource
-            const name = snapshot.val().name
-            const email = snapshot.val().email
-            const bio = snapshot.val().bio
-            const phone = snapshot.val().phone
-            this.setState({
-                imageSource: image ? { uri: image } : require('../../assets/profile/user.png'),
-                name: name ? name : '',
-                email: email ? email : '',
-                bio: bio ? bio : '',
-                phone: phone ? phone : '',
-            })
+        const person = await firebase.database().ref(`users/${uid}`).once("value")
+
+        const image = person.val().image
+        const name = person.val().name
+        const status = person.val().status
+        const bio = person.val().bio
+
+        this.setState({
+            imageSource: image ? { uri: image } : require('../../assets/profile/user.png'),
+            name: name ? name : '',
+            status: status ? status  : '',
+            bio: bio ? bio : '',
         })
 
     }
@@ -69,7 +76,9 @@ class Profile extends Component {
     }
 
     _handleChange = key => value => {
+
         this.setState({ [key]: value })
+
     }
 
     _saveProfile = async () => {
@@ -80,12 +89,22 @@ class Profile extends Component {
 
             if(this.state.name.trim() === "") {
                 error = true
-                throw new Error('Please enter valid name')
+                throw new Error('Please enter valid Name.')
             }
 
             if(this.state.name.length < 3) {
                 error = true
-                throw new Error('Minimum Character 3 length')
+                throw new Error('Name Minimum Character 3 length.')
+            }
+
+            if(this.state.status.trim() === "") {
+                error = true
+                throw new Error('Status is Required.')
+            }
+
+            if(this.state.bio.length < 10) {
+                error = true
+                throw new Error('Bio Minimum Character 10 length.')
             }
 
             if(error === false) {
@@ -119,68 +138,81 @@ class Profile extends Component {
 
         ImagePicker.showImagePicker(options, response => {
 
-            let error  = false
-
-            const arr = [response.fileName]
-            const extension = arr[0].split('.')
-            const filename = extension[1]
-
             try {
-                if(response.fileSize > 5242880) {
-                    throw new Error('File size cannot than 5 MB !')
-                    error = true
-                }
-                if(!this.isImage(filename)) {
-                    throw new Error('File allowed only JPG, JPEG, PNG, GIF, SVG !')
-                    error = true
-                }
 
-                if(response.error) {
-                    throw new Error(response.error)
-                } else if(!response.didCancel) {
-                    this.setState({
-                        upload: true,
-                        imageSource: {
-                            uri: response.uri
-                        }
-                    }, this.uploadedFile)
+                if(!response.didCancel && !response.error) {
+
+                    const { fileName, fileSize } = response
+                    const isValid = this.validateImage(fileName, fileSize)
+
+                    if (isValid) {
+                        this.setState({
+                            upload: true,
+                            imageSource: {
+                                uri: response.uri
+                            }
+                        }, this.uploadedFile)
+                    }
+
                 }
 
             } catch(error) {
-                toastr(error.message, 'danger')
-            }
 
+                toastr(error.message, 'danger')
+
+            }
 
         })
 
     }
 
-    isImage = (filename) => {
-        switch (filename) {
-            case 'jpg':
-            case 'gif':
-            case 'bmp':
-            case 'png':
-                return true
+    validateImage (fileName, fileSize)  {
+
+        const split = fileName.split('.')
+        const ext = split[split.length - 1].toLocaleLowerCase()
+        const acceptableExts = ['png', 'jpg', 'jpeg'];
+        if (this.validExtension(ext, acceptableExts) !== true) {
+            toastr('Invalid image extension.', 'danger');
+        } else if (fileSize >= 102400) {
+            toastr('Image too large. Max: 1mb', 'danger');
+        } else {
+            return true
         }
-        return false
+
     }
 
-    updateUser = (imageUrl) => {
-        const { imageSource, name, bio, phone } = this.state
+    validExtension (ext, acceptableExts) {
+
+        for (const acceptExt of acceptableExts) {
+            if (acceptExt === ext) {
+                return true
+            }
+        }
+
+        return false
+
+    }
+
+    updateUser = async (imageUrl) => {
+
+        const { imageSource, name, status, bio } = this.state
         const { currentUser } = firebase.auth()
 
+        const getDBImage = await firebase.database().ref(`/users/${currentUser.uid}`).once('value')
+
         firebase.database().ref(`users/${currentUser.uid}`).update({
-            imageSource: imageSource ? imageUrl : '',
+            image: imageUrl ? imageUrl : getDBImage.val().image ? getDBImage.val().image : 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_isWgOJHA7YNXAhKDE5h12SW2l91gIYU9YfZTisz4KItXN18U&s',
             name: name ? name : '',
-            bio: bio ? bio : '',
-            phone: phone ? phone : ''
+            status: status ? status : '',
+            bio: bio ? bio : ''
         })
 
         toastr('Successfully updated !', 'success')
+
     }
 
     updateUserImage = (imageUrl) => {
+
         this.updateUser(imageUrl)
         this.setState({
             upload: false,
@@ -188,9 +220,11 @@ class Profile extends Component {
                 uri: imageUrl
             }
         })
+
     }
 
     uploadedFile = async () => {
+
         const { currentUser } = firebase.auth()
         const file = await this.uriToBlob(this.state.imageSource.uri)
         firebase.storage().ref(`profile_picture/${currentUser.uid}.png`)
@@ -203,9 +237,11 @@ class Profile extends Component {
                     imageSource: require('../../assets/profile/user.png')
                 })
             })
+
     }
 
     uriToBlob = (uri) => {
+
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest()
             xhr.onload = function () {
@@ -218,92 +254,94 @@ class Profile extends Component {
             xhr.open('GET', uri, true)
             xhr.send(null)
         })
+
     }
 
     render() {
+
         return (
-            <SafeAreaView style={{
-                backgroundColor: '#d6dce2',
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}>
-                <TouchableOpacity onPress={ this._changeImage }>
-                    {
-                        this.state.upload ? <ActivityIndicator size="large" /> : <Image style={{
-                                borderRadius: 100,
-                                width: 100,
-                                height: 100,
-                                marginBottom: 10,
-                                resizeMode: 'cover'
-                            }} source={ this.state.imageSource } />
-                    }
-                </TouchableOpacity>
-                <TextInput style={{
-                    padding: 8,
-                    borderWidth: 1,
-                    borderColor: '#34526e',
-                    color: '#24394d',
-                    width: '80%',
-                    marginBottom: 10,
-                    borderRadius: 5
-                }} placeholder='Name' placeholderTextColor='#24394d' value={this.state.name} onChangeText={this._handleChange('name')} />
-                <TextInput style={{
-                    padding: 8,
-                    borderWidth: 1,
-                    borderColor: '#34526e',
-                    color: '#24394d',
-                    width: '80%',
-                    marginBottom: 10,
-                    borderRadius: 5
-                }} placeholder='Email' placeholderTextColor='#24394d' editable={false} value={this.state.email} onChangeText={this._handleChange('email')} />
-                <TextInput style={{
-                    padding: 8,
-                    borderWidth: 1,
-                    borderColor: '#34526e',
-                    color: '#24394d',
-                    width: '80%',
-                    marginBottom: 10,
-                    borderRadius: 5
-                }} placeholderTextColor='#24394d' placeholder= 'Bio' value={this.state.bio} onChangeText={this._handleChange('bio')} />
-                <TextInput style={{
-                    padding: 8,
-                    borderWidth: 1,
-                    borderColor: '#34526e',
-                    color: '#24394d',
-                    width: '80%',
-                    marginBottom: 10,
-                    borderRadius: 5
-                }} placeholderTextColor='#24394d' placeholder= 'Phone' value={this.state.phone} onChangeText={this._handleChange('phone')} />
-                <TouchableOpacity
-                    onPress={this._saveProfile}
-                    style={{
-                        padding: 8,
-                        backgroundColor: '#294158',
-                        marginTop: 12,
-                        borderRadius: 7
-                    }}>
-                    <Text style={{
-                        color:'#d6dce2'
-                    }}> Save </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={this._signout}
-                    style={{
-                        padding: 8,
-                        marginTop: 14,
-                        backgroundColor: '#ff5065',
-                        borderRadius: 7
-                    }}>
-                    <Text style={{
-                        color: '#d6dce2'
-                    }}>
-                        Logout
-                    </Text>
-                </TouchableOpacity>
-            </SafeAreaView>
+
+                <View style={{
+                    flex: 1,
+                    backgroundColor: '#d6dce2',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <TouchableOpacity onPress={ this._changeImage }>
+                        {
+                            this.state.upload ? <ActivityIndicator size="large" /> :
+                                <Image style={{
+                                    borderRadius: 100,
+                                    width: 80,
+                                    height: 80,
+                                    resizeMode: 'cover'
+                                }} source={ this.state.imageSource } />
+                        }
+                    </TouchableOpacity>
+                    <View style={ Style.container }>
+
+                        <Text style={ Style.label }> Name </Text>
+                        <TextInput style={ Style.input } placeholder='Name' placeholderTextColor='#24394d' value={this.state.name} onChangeText={this._handleChange('name')} />
+
+                        <Text style={ Style.label }> Status </Text>
+                        <TextInput style={ Style.input} placeholder='Status' onChangeText={this._handleChange('status')} value={this.state.status} />
+
+                        <Text style={ Style.label }> Bio </Text>
+                        <TextInput style={ Style.input }  placeholder= 'Bio' placeholderTextColor='#24394d' value={this.state.bio} onChangeText={this._handleChange('bio')}
+                         multiline={true} numberOfLines={4}
+                        />
+
+                        <TouchableOpacity onPress={this._saveProfile} style={ Style.save }>
+                            <Text style={{ color:'#d6dce2' }}> Save </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={this._signout} style={ Style.logout }>
+                            <Text style={{ color: '#d6dce2' }}> Logout </Text>
+                        </TouchableOpacity>
+
+                    </View>
+                </View>
+
         )
     }
 }
+
+const Style = StyleSheet.create({
+    container: {
+        width: '80%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 35
+    },
+    label: {
+        marginVertical: 8,
+        marginLeft: 26,
+        alignSelf: 'flex-start'
+    },
+    logout: {
+        padding: 8,
+        marginTop: 10,
+        backgroundColor: '#ff5065',
+        alignItems: 'center',
+        width: '80%',
+        borderRadius: 7
+    },
+    save: {
+        padding: 8,
+        backgroundColor: '#294158',
+        marginTop: 12,
+        alignItems: 'center',
+        width: '80%',
+        borderRadius: 7
+    },
+    input: {
+        padding: 5,
+        borderWidth: 1,
+        borderColor: '#34526e',
+        color: '#24394d',
+        width: '80%',
+        borderRadius: 5
+    }
+})
 
 export default Profile

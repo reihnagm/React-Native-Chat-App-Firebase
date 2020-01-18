@@ -49,7 +49,7 @@ class SignIn extends Component {
             const response = await firebase.auth().signInWithEmailAndPassword(email, password)
 
             firebase.database().ref('users').child(response.user.uid).update({
-                uid: response.user.uid 
+                uid: response.user.uid
             })
 
             await AsyncStorage.setItem('userToken',response.user.uid)
@@ -86,7 +86,7 @@ class SignIn extends Component {
                         value={this.state.email}
                         onChangeText={this._handleChange('email')}
                         placeholder='Email'
-                        placeholderTextColor='#7f99b2'
+                        placeholderTextColor='#294158'
                         style={styles.textInput}
                         returnKeyType="next"
                     />
@@ -94,19 +94,23 @@ class SignIn extends Component {
                         value={this.state.password}
                         onChangeText={this._handleChange('password')}
                         placeholder='Password'
-                        placeholderTextColor='#7f99b2'
+                        placeholderTextColor='#294158'
                         style={styles.textInput}
                         returnKeyType="go"
                     />
                     <View style={styles.btnLogIn}>
                         { this._renderAccessButton() }
                     </View>
+
+                    <TouchableOpacity
+                        style={{
+                            marginTop: 14
+                        }}
+                        onPress={() => this.props.navigation.navigate('SignUp')}>
+                        <Text style={styles.textRegister}>Don't have account ? Sign Up now »</Text>
+                    </TouchableOpacity>
                 </View>
 
-
-                <TouchableOpacity onPress={() => this.props.navigation.navigate('SignUp')}>
-                    <Text style={styles.textRegister}>Don't have account ? Sign up now »</Text>
-                </TouchableOpacity>
             </View>
         )
     }
@@ -116,6 +120,7 @@ class SignIn extends Component {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#d6dce2',
         padding: 10
     },
     textTitle: {
@@ -127,12 +132,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     textInput: {
-        backgroundColor: '#e5eaef',
+        backgroundColor: '#eaedf0',
         borderRadius: 7,
         paddingHorizontal: 16,
         marginVertical: 10,
         fontSize: 16,
-        color: '#7f99b2'
+        color: '#294158'
     },
     textRegister: {
         fontSize: 16,
@@ -143,13 +148,13 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingTop: 12,
         paddingBottom: 12,
-        backgroundColor: '#194775',
+        backgroundColor: '#24394d',
         borderRadius: 7,
         borderWidth: 1,
-        borderColor: '#194775'
+        borderColor: '#24394d'
     },
     loginText: {
-        color:'#fff',
+        color:'#d6dce2',
         textAlign:'center',
     }
 })
