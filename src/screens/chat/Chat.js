@@ -47,9 +47,55 @@ class Chat extends Component {
 
     }
 
-    static navigationOptions = ({ navigate }) => {
-        headerTitle: () => <Text> test </Text>
-    }
+
+    static navigationOptions = ({ navigation }) => {
+
+        let image
+
+        firebase.database().ref(`users/${navigation.state.params.uid}`).once("value", function(snapshot, prevChildKey) {
+            image = snapshot.val().image
+        })
+
+        let imageSource = image ? { uri: image } : require('../../assets/profile/user.png')
+
+        return {
+
+            title: '',
+
+            headerStyle: {
+              backgroundColor: '#708599',
+            },
+
+            headerRight: (
+              <TouchableOpacity onPress={() => alert('Right Menu Clicked')}>
+                <Text
+                    style={{
+                        color: 'white',
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        marginRight: 20
+                    }}>
+                  { navigation.state.params.name }
+                </Text>
+              </TouchableOpacity>
+            ),
+            headerLeft: (
+              <TouchableOpacity onPress={() => navigation.navigate('FirstPage')}>
+
+                <Image style={{
+                        width: 32,
+                        height: 32,
+                        resizeMode: 'cover',
+                        marginLeft: 20,
+                        borderRadius: 32
+                    }}
+                    source={ imageSource } />
+
+              </TouchableOpacity>
+            ),
+        };
+    };
+
 
     async _fetchdata () {
 
@@ -140,18 +186,33 @@ class Chat extends Component {
             updates[`${this.state.person.uid}/${uid}/${msgId}`] = message
             firebase.database().ref('messages').update(updates)
 
-            let msgId2 = firebase.database().ref('user_conversations').child(this.state.person.uid).push().key
+            let message3
+            let latestMessage = this.state.textMessage
+            let image = this.state.person.image
+
             let updates2 = {}
             let message2 = {
                 name: this.state.person.name,
                 email: this.state.person.email,
                 uid: this.state.person.uid,
-                lastMessage: this.state.textMessage
+                lastMessage: latestMessage,
+                image: image ? image : 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_isWgOJHA7YNXAhKDE5h12SW2l91gIYU9YfZTisz4KItXN18U&s'
             }
 
+            const { currentUser } = firebase.auth()
 
-            updates2[`${uid}/${this.state.person.uid}/${msgId}`] = message2
-            updates2[`${this.state.person.uid}/${uid}/${msgId}`] = message2
+            firebase.database().ref(`users/${uid}`).once("value", function(snapshot, prevChildKey) {
+                message3 = {
+                    name: snapshot.val().name,
+                    email: currentUser.email,
+                    uid,
+                    lastMessage: latestMessage,
+                    image: image ? image : 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_isWgOJHA7YNXAhKDE5h12SW2l91gIYU9YfZTisz4KItXN18U&s'
+                }
+            })
+
+            updates2[`${uid}/${this.state.person.uid}`] = message2
+            updates2[`${this.state.person.uid}/${uid}`] = message3
             firebase.database().ref('user_conversations').update(updates2)
 
             this.setState({ textMessage: '' })
@@ -269,6 +330,9 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 2,
         height: 60
+    },
+    header: {
+        backgroundColor: 'red'
     }
 })
 

@@ -6,6 +6,8 @@ import firebase from 'firebase'
 
 import { NavigationEvents } from 'react-navigation'
 
+import _ from 'lodash'
+
 class Home extends Component {
 
     _isMounted = false
@@ -34,21 +36,20 @@ class Home extends Component {
 
         const uid = await AsyncStorage.getItem('userToken')
 
-        await firebase.database().ref('users').on('child_added', async (snapshot1) => {
-            await firebase.database().ref(`user_conversations`).child(uid).child(`${snapshot1.val().uid}`).once('child_added', async (snapshot2) => {
+        firebase.database().ref(`user_conversations/${uid}`).on('child_added', snapshot => {
 
-                if (snapshot2.key !== uid) {
-                    if (this._isMounted) {
-                        this.setState(prevState => {
-                            return {
-                                users: prevState.users.concat(snapshot2.val())
-                            }
-                        })
-                    }
+            if (snapshot.key !== uid) {
+                if (this._isMounted) {
+                    this.setState(prevState => {
+                        return {
+                            users: prevState.users.concat(snapshot.val())
+                        }
+                    })
                 }
+            }
 
-            })
         })
+
     }
 
     componentDidMount() {
@@ -100,7 +101,6 @@ class Home extends Component {
     render() {
         return (
             <>
-                <NavigationEvents onDidFocus={ () => console.log('test') } />
                 <SafeAreaView style={{ backgroundColor: '#d6dce2', flex: 1 }}>
 
                     <FlatList

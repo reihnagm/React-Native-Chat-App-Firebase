@@ -25,6 +25,8 @@ import firebase from 'firebase'
 
 class Profile extends Component {
 
+    _isMounted = false
+
     constructor(props) {
 
         super(props)
@@ -41,6 +43,8 @@ class Profile extends Component {
 
     async _getProfile() {
 
+        this._isMounted = true
+
         const uid = await AsyncStorage.getItem('userToken')
 
         const { navigation } = this.props
@@ -52,18 +56,27 @@ class Profile extends Component {
         const status = person.val().status
         const bio = person.val().bio
 
-        this.setState({
-            imageSource: image ? { uri: image } : require('../../assets/profile/user.png'),
-            name: name ? name : '',
-            status: status ? status  : '',
-            bio: bio ? bio : '',
-        })
+        if(this._isMounted) {
+            this.setState({
+                imageSource: image ? { uri: image } : require('../../assets/profile/user.png'),
+                name: name ? name : '',
+                status: status ? status  : '',
+                bio: bio ? bio : '',
+            })
+        }
 
     }
 
     componentDidMount() {
 
         this._getProfile()
+
+    }
+
+
+    componentWillUnmount() {
+
+        this._isMounted = false
 
     }
 

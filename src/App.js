@@ -4,7 +4,7 @@ import { Provider } from 'react-redux'
 
 import { YellowBox } from 'react-native'
 
-YellowBox.ignoreWarnings(['Setting a timer'])
+YellowBox.ignoreWarnings(['Setting a timer', 'perform a React'])
 
 import { Root } from 'native-base'
 
