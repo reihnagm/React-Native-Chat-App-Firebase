@@ -1,7 +1,7 @@
 # Chat App with Maps
 ### Description :
 This is an open-source project using React-Native and Firebase, this project is not for profit and is used only as an object of study on development.
-![8JHGs.jpg](https://www.imgpaste.net/image/8AOM5)
+![8JHGs.jpg](https://cdn.imgpaste.net/2020/01/31/8AOM5.jpg)
 
 ## Installation
 
