@@ -24,6 +24,7 @@ $ npm run android
 ```
 
 ## Other Dependencies
+- [firebase](#)
 - [react-native-dotenv](#)
 - [react-navigation](#)
 - [react-native-dotenv](#)
